@@ -295,8 +295,8 @@ looker.plugins.visualizations.add({
     // Sparkline SVG
     var showSparkline = config.show_sparkline !== false;
     if (showSparkline && values.length >= 2) {
-      var sparkWidth = Math.max(100, Math.min(180, element.clientWidth * 0.2));
-      var sparkHeight = Math.max(30, parseInt(fontSize) * 0.75);
+      var sparkWidth = Math.max(140, Math.min(240, element.clientWidth * 0.25));
+      var sparkHeight = Math.max(40, parseInt(fontSize) * 1.0);
       html.push('<div class="sv-spark-chart">' + this._buildSparkline(values, sparkWidth, sparkHeight, config) + '</div>');
     }
 
