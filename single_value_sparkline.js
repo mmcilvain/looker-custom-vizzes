@@ -122,24 +122,37 @@ looker.plugins.visualizations.add({
     // -- Comparison --
     show_comparison: {
       type: "boolean",
-      label: "Show Period Comparison",
+      label: "Show Comparison",
       default: true,
       section: "Comparison",
       order: 1
     },
+    comparison_mode: {
+      type: "string",
+      label: "Compare How",
+      default: "first_last",
+      display: "select",
+      values: [
+        { "Last vs First Row": "first_last" },
+        { "Most Recent vs Prior Row": "row_over_row" },
+        { "Split Half (use 14 days for WoW)": "split_half" }
+      ],
+      section: "Comparison",
+      order: 2
+    },
     comparison_label: {
       type: "string",
       label: "Comparison Label",
-      default: "vs. prior period",
+      default: "auto",
       section: "Comparison",
-      order: 2
+      order: 3
     },
     positive_is_good: {
       type: "boolean",
       label: "Positive Change is Good",
       default: true,
       section: "Comparison",
-      order: 3
+      order: 4
     }
   },
 
@@ -317,17 +330,41 @@ looker.plugins.visualizations.add({
       }
     }
 
-    // -- Comparison: split in half --
-    // For a true WoW, use 14-day filter so the split is 7 vs 7
+    // -- Comparison calculation --
     var compPct = null;
+    var autoLabel = "vs. prior period";
+    var compMode = config.comparison_mode || "first_last";
+
     if (values.length >= 2) {
-      var mid = Math.floor(values.length / 2);
-      var firstHalf = 0;
-      var secondHalf = 0;
-      for (var k = 0; k < mid; k++) firstHalf += values[k];
-      for (var m = mid; m < values.length; m++) secondHalf += values[m];
-      if (firstHalf !== 0) {
-        compPct = ((secondHalf - firstHalf) / Math.abs(firstHalf)) * 100;
+      if (compMode === "first_last") {
+        // Compare most recent value to oldest value in the range
+        var oldest = values[0];
+        var newest = values[values.length - 1];
+        if (oldest !== 0) {
+          compPct = ((newest - oldest) / Math.abs(oldest)) * 100;
+        }
+        autoLabel = "vs. " + (rows[0].label || "start of period");
+
+      } else if (compMode === "row_over_row") {
+        // Compare last row to second-to-last row (e.g. day over day)
+        var prev = values[values.length - 2];
+        var curr = values[values.length - 1];
+        if (prev !== 0) {
+          compPct = ((curr - prev) / Math.abs(prev)) * 100;
+        }
+        autoLabel = "vs. " + (rows[rows.length - 2].label || "prior row");
+
+      } else if (compMode === "split_half") {
+        // Split data in half — use 14 rows for a clean WoW
+        var mid = Math.floor(values.length / 2);
+        var firstHalf = 0;
+        var secondHalf = 0;
+        for (var k = 0; k < mid; k++) firstHalf += values[k];
+        for (var mm = mid; mm < values.length; mm++) secondHalf += values[mm];
+        if (firstHalf !== 0) {
+          compPct = ((secondHalf - firstHalf) / Math.abs(firstHalf)) * 100;
+        }
+        autoLabel = "vs. prior " + mid + " days";
       }
     }
 
@@ -470,7 +507,8 @@ looker.plugins.visualizations.add({
 
       var compLabelSpan = document.createElement("span");
       compLabelSpan.className = "sv-spark-comp-label";
-      compLabelSpan.textContent = config.comparison_label || "vs. prior period";
+      var compLabelText = config.comparison_label || "auto";
+      compLabelSpan.textContent = (compLabelText === "auto") ? autoLabel : compLabelText;
 
       compDiv.appendChild(compSpan);
       compDiv.appendChild(compLabelSpan);
