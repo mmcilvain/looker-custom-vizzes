@@ -156,9 +156,8 @@ looker.plugins.visualizations.add({
       ".sv-spark-value-row {",
       "  display: flex;",
       "  align-items: flex-end;",
-      "  justify-content: space-between;",
-      "  width: 100%;",
-      "  gap: 12px;",
+      "  justify-content: flex-start;",
+      "  gap: 20px;",
       "}",
       ".sv-spark-value {",
       "  font-weight: 600;",
@@ -167,6 +166,7 @@ looker.plugins.visualizations.add({
       "}",
       ".sv-spark-chart {",
       "  flex-shrink: 0;",
+      "  align-self: center;",
       "}",
       ".sv-spark-comparison {",
       "  font-size: 13px;",
@@ -295,8 +295,8 @@ looker.plugins.visualizations.add({
     // Sparkline SVG
     var showSparkline = config.show_sparkline !== false;
     if (showSparkline && values.length >= 2) {
-      var sparkWidth = Math.min(120, Math.max(60, element.clientWidth * 0.25));
-      var sparkHeight = Math.min(40, parseInt(fontSize) * 0.65);
+      var sparkWidth = Math.max(100, Math.min(180, element.clientWidth * 0.2));
+      var sparkHeight = Math.max(30, parseInt(fontSize) * 0.75);
       html.push('<div class="sv-spark-chart">' + this._buildSparkline(values, sparkWidth, sparkHeight, config) + '</div>');
     }
 
