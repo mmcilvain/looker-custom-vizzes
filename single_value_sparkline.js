@@ -104,6 +104,20 @@ looker.plugins.visualizations.add({
       section: "Sparkline",
       order: 3
     },
+    show_area_fill: {
+      type: "boolean",
+      label: "Show Area Fill",
+      default: true,
+      section: "Sparkline",
+      order: 4
+    },
+    show_end_label: {
+      type: "boolean",
+      label: "Show Value at End",
+      default: true,
+      section: "Sparkline",
+      order: 5
+    },
 
     // -- Comparison --
     show_comparison: {
@@ -144,7 +158,7 @@ looker.plugins.visualizations.add({
       "  width: 100%;",
       "  padding: 16px 20px;",
       "  box-sizing: border-box;",
-      "  overflow: hidden;",
+      "  overflow: visible;",
       "}",
       ".sv-spark-label {",
       "  font-size: 13px;",
@@ -178,6 +192,7 @@ looker.plugins.visualizations.add({
       "  flex-shrink: 0;",
       "  align-self: center;",
       "  position: relative;",
+      "  overflow: visible;",
       "}",
       ".sv-spark-tooltip {",
       "  position: absolute;",
@@ -471,7 +486,9 @@ looker.plugins.visualizations.add({
   _buildSparklineSVG: function(rows, width, height, config) {
     var color = config.sparkline_color || "#4285F4";
     var strokeWidth = parseFloat(config.sparkline_weight) || 2;
-    var padding = Math.max(strokeWidth + 1, 6);
+    var padding = Math.max(strokeWidth + 1, 8);
+    var showFill = config.show_area_fill !== false;
+    var showEndLabel = config.show_end_label !== false;
 
     var values = [];
     for (var i = 0; i < rows.length; i++) values.push(rows[i].value);
@@ -501,11 +518,43 @@ looker.plugins.visualizations.add({
 
     var svg = [];
     svg.push('<svg width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">');
+
+    // Gradient definition for area fill
+    if (showFill) {
+      svg.push('  <defs>');
+      svg.push('    <linearGradient id="sv-area-grad" x1="0" y1="0" x2="0" y2="1">');
+      svg.push('      <stop offset="0%" stop-color="' + color + '" stop-opacity="0.15" />');
+      svg.push('      <stop offset="100%" stop-color="' + color + '" stop-opacity="0.02" />');
+      svg.push('    </linearGradient>');
+      svg.push('  </defs>');
+
+      // Area fill polygon: line path + bottom-right + bottom-left
+      var bottomY = padding + dh;
+      var fillPoints = polyPoints.join(" ");
+      fillPoints += " " + coords[coords.length - 1].x.toFixed(1) + "," + bottomY.toFixed(1);
+      fillPoints += " " + coords[0].x.toFixed(1) + "," + bottomY.toFixed(1);
+      svg.push('  <polygon fill="url(#sv-area-grad)" stroke="none" points="' + fillPoints + '" />');
+    }
+
+    // The sparkline
     svg.push('  <polyline fill="none" stroke="' + color + '" stroke-width="' + strokeWidth + '" stroke-linecap="round" stroke-linejoin="round" points="' + polyPoints.join(" ") + '" />');
 
-    // Invisible dots — become visible on hover via JS
+    // Invisible hover dots
     for (var d = 0; d < coords.length; d++) {
       svg.push('  <circle class="sv-spark-dot" cx="' + coords[d].x.toFixed(1) + '" cy="' + coords[d].y.toFixed(1) + '" r="3" fill="' + color + '" opacity="0" data-idx="' + d + '" />');
+    }
+
+    // Persistent end dot — always visible
+    var lastCoord = coords[coords.length - 1];
+    svg.push('  <circle cx="' + lastCoord.x.toFixed(1) + '" cy="' + lastCoord.y.toFixed(1) + '" r="3.5" fill="' + color + '" opacity="1" />');
+
+    // End label — most recent value next to the last dot
+    if (showEndLabel) {
+      var lastRow = rows[rows.length - 1];
+      var endText = lastRow.rendered || this._formatShorthand(lastRow.value);
+      var textX = lastCoord.x + 8;
+      var textY = lastCoord.y + 4;
+      svg.push('  <text x="' + textX.toFixed(1) + '" y="' + textY.toFixed(1) + '" font-family="Google Sans, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="500" fill="#5f6368">' + this._escapeHtml(endText) + '</text>');
     }
 
     svg.push('</svg>');
